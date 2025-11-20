@@ -7,7 +7,7 @@ server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # This create
 								     # UDP (which is DGRAM)
 
 HOST = '127.0.0.1'                       # loopback only to keep incoming transmission to this machine
-PORT = input(int("Enter Port Number to listen on (1024-65535): ").strip())		
+PORT = int(input("Enter Port Number to listen on (1024-65535): ").strip())		
 
 
 def reverse_string(incoming):
