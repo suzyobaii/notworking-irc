@@ -113,8 +113,20 @@ class ChatServer:
 			print("Connected clients:", ", ".join(self.clients.keys()) if self.clients else "No clients connected")
 
 	# Create a channel when a client joins the server
-	def create_channel(self):
-		pass  # implement later
+	def create_channel(self, channel_name):
+		'''
+		creates a new channel if it doesn't already exist.
+		returns the channel object
+		'''
+		if channel_name not in self.channels:
+			new_channel = Channel(channel_name)
+			self.channels[channel_name] = new_channel
+			print(f"Channel created >.<: {channel_name}")
+		else:
+			print(f"Channel already exists T_T: {channel_name}")
+
+		return self.channels[channel_name]
+		
 
 	# Create a log of user activity
 	def logging(self):
