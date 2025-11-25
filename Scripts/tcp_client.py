@@ -3,6 +3,7 @@ import threading
 import sys
 import os
 import signal
+from ChatProtocol import Command, Event, Message, serialize, deserialize
 
 client_socket = None
 connected = False
@@ -25,7 +26,7 @@ def display_help():
 
 /leave [<channel>]             - Leave the current or specific channel.
 
-/quite					       - Leave chat and Disconnect from the server.
+/quit					       - Leave chat and Disconnect from the server.
 
 /help						   - Display this help message.
 
@@ -39,24 +40,94 @@ def connect_to_server(server_name, port):
 	global client_socket, connected
       
 	if connected:
-		print("Already connected to a server.")
+		print("---Already connected to a server.---")
 		return
 	
-	else:
+	try:
+		client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		client_socket.connect((server_name, port))
+		connected = True
+
+		threading.Thread(target=receive_messages, daemon = True).start()
+		print(f"--- Connected to server {server_name}:{port} ---")
+	except Exception as e:
+		print(f"--- Connection failed: {e} ---")
+		connected = False
+		client_socket = None	
+
+
+def disconnect_from_server():
+
+	global client_socket, connected
+
+	if connected:
 		try:
-			client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			client_socket.connect((server_name, port))
-			connected = True
 
-			threading.Thread(target=receive_messages, daemon = True).start()
+			if client_socket:
+				client_socket.sendall(serialize(Command(cmd="/quit")).encode('utf-8'))
+			client_socket.close()
+		
 		except:
+			pass
+		finally:
+			connected = False
+			client_socket = None
+			print("--- Disconnected from server.---")
+		os._exit(0)
+	
+
+def receive_messages():
+	global connected, nickname
+
+	while connected:
+		try:
+			data = client_socket.recv(1024)
+			if not data:
+				print("\n--- Server closed the connection. ---")
+				disconnect_from_server()
+				break
+
+			response = deserialize(data.decode('utf-8'))
+
+			if isinstance(response, Event):
+				print(f"\r{response.notif}\n", end='')
+
+				if response.type == "nick":
+					nickname = response.optional
+
+			elif isinstance(response, Message):
+				print(f"\r{response.sender}>{response.content}\n", end='')
+
+			else:
+				raise ValueError("Unknown response sent.")
+
+			sys.stdout.write(f"{nickname}>")
+			sys.stdout.flush()
+		
+		except ConnectionResetError:
+			print("\n--- Connection lost. ---")
+			connected = False
+			break
+		except Exception as e:
+			if connected:
+				print(f"\n--- Error receiving message: {e} ---")
+			connected = False
+			break
 
 
+def send_message(message):
+	global client_socket, connected
 
-
-
-
-
+	if connected and client_socket:
+		try:
+			msg = Message(content=message)
+			client_socket.sendall(serialize(msg).encode('utf-8'))
+		except Exception as e:
+			print(f"--- Error sending message: {e} ---")
+			connected = False
+			client_socket.close()
+	else:
+		print("--- Not connected to any server. ---")
 
 
 
@@ -77,7 +148,7 @@ def user_interface_loop():
 	while True:
 		try:
 			
-			prompt = f"{nickname>}"
+			prompt = f"{nickname}>"
 			sys.stdout.write(prompt)
 			sys.stdout.flush()
 
@@ -86,14 +157,60 @@ def user_interface_loop():
 			if not message:
 				continue
 
-			if message.startswith('/'):
+			if message.startswith('/'): # if the message is a command
 				split = message.split()
-				command = split[0].lower()
+				cmd = split[0].lower()
 				args = split[1:]
 
-				if command == '/connect':
+				if cmd == '/connect':
 					host = args[0]
 					port = int(args[1]) if len(args) > 1 else 65432 # maximum port number
 					connect_to_server(host, port)
 				
-				elif command == '/nick':
+				elif cmd == '/quit':
+					disconnect_from_server()
+
+				elif cmd == '/help':
+					display_help()
+				
+				elif connected:
+					command = Command(cmd=cmd, args=args)
+
+					if cmd == '/nick':
+						if len(args) != 1:
+							print("Usage: /nick <nickname>")
+						else:
+							#nickname = args[0]
+							client_socket.sendall(serialize(command).encode('utf-8'))
+					
+					elif cmd == '/list':
+						client_socket.sendall(serialize(command).encode('utf-8'))
+					
+					elif cmd == '/join':
+						if len(args) != 1:
+							print("Usage: /join <channel>")
+						else:
+							client_socket.sendall(serialize(command).encode('utf-8'))
+					
+					elif cmd == '/leave':
+						client_socket.sendall(serialize(command).encode('utf-8'))
+					
+					else:
+						print("Unknown command. Type /help for a list of commands.")
+
+				else:
+					print("Not connected to any server. Use /connect to connect.")
+				
+			elif connected:
+				send_message(message)
+
+			else:
+				print("Not connected to any server. Use /connect to connect.")
+		except EOFError:
+			disconnect_from_server()
+		
+		except Exception as e:
+			disconnect_from_server()
+
+if __name__ == "__main__":
+	user_interface_loop()
