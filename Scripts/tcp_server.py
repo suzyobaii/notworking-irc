@@ -2,6 +2,18 @@ import socket    # TCP Socket
 import threading # handles multiple clients
 import random    # to choose one of three transformatons
 
+# Logging and colorama for colored text:
+import logging
+import colorama
+# enabling colorama (when testing remeber to pip install colorama before beginning, that's the only way this works)
+from log_setup import setupLogServer
+from colorama import Fore, Style, init
+init(autoreset=True)
+
+#Calling Logging
+setupLogServer()
+logging.info("Server Logging initialized")
+
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # This creates a TCP socket rather
 								     # UDP (which is DGRAM)

@@ -4,6 +4,17 @@ import sys
 import os
 import signal
 
+# Logging and color
+import logging
+import colorama
+from log_setup import setupLogClient
+from colorama import Fore, Style, init
+init(autoreset=True)
+
+setupLogClient()
+logging.info("Client Logging initialized")
+
+
 client_socket = None
 connected = False
 nickname = "Guest"
