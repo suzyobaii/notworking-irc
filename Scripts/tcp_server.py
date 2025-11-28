@@ -111,6 +111,11 @@ class ChatServer:
 		self.channels = {}
 		self.clients = set()
 		self.unique_nicknames = set()
+	
+	def log(self, message, level=1):
+		# level 0 = crit error, level 1 = all venets
+		if level <= self.debug_level:
+			print(message)
 
 	# Server will start running at the port number
 	def startup(self):
@@ -120,29 +125,39 @@ class ChatServer:
 		self.socket.bind((self.host, self.port))
 		self.socket.listen(4) # Maximum of 4 threads (clients)
 
-		print(f"TCP server listening on {self.host} : {self.port}")
+		self.log(f"TCP server listening on {self.host} : {self.port}", level=0)
 		self.accept_clients()
 
 
 	def accept_clients(self):
+		self.socket.settimeout(180) # 3 minute timeout for idle server
 		try:
 			while True:
-				conn, addr = self.socket.accept()
-
+				try:
+					conn, addr = self.socket.accept()
+				except socket.timeout:
+					# If timeout occurs and no clients conennected, timeout
+					if len(self.clients) == 0:
+						self.log("Server idle for 3 minutes... Shutting Down.", level=0)
+						break
+					else:
+						continue
+				# continuation of Tina's Code	
 				user = User(conn, addr)
 				self.clients.add(user)
 				self.unique_nicknames.add(user.nickname)
 
 				self.channels[user.curr_channel.name] = user.curr_channel
 
-				print("A new user has joined the server!")
+				self.log("A new user has joined the server!", level=1)
 
 				t = threading.Thread(target=self.handle_client, args=(user,), daemon=True)
 				t.start()
 		except KeyboardInterrupt:
-			print("\nShutting down connection...")
+			self.log("\nShutting down connection...")
 		finally:
-			self.socket.close()
+			self.shutdown()
+
 
 
 	"""
@@ -161,7 +176,7 @@ class ChatServer:
 				response = deserialize(data)
 
 				if isinstance(response, Command):
-					print(response.cmd) # For testing purposes
+					self.log(response.cmd, level=1) # For testing purposes
 
 					if response.cmd == "/quit":
 						user.leave_all_channels()
@@ -222,7 +237,7 @@ class ChatServer:
 					user.conn.sendall(serialize(event).encode('utf-8'))
 							
 				elif isinstance(response, Message):
-					print("Sending a message.") # For testing purposes
+					self.log("Sending a message.", level=1) # For testing purposes
 					if user.curr_channel:
 						user.curr_channel.broadcast(user, response)
 					else:
@@ -233,15 +248,30 @@ class ChatServer:
 					raise ValueError("Unknown object type sent.")
 
 			except KeyboardInterrupt:
-				print("Server shutting down...")
+				self.log("Server shutting down...", level=1)
 
-
-	# Create a log of user activity
-	def logging(self):
-		pass
 
 	def shutdown(self):
-		pass
+		self.log("server is shutting down...", level=0)
+
+		for user in list(self.clients):
+			
+			try:
+				user.conn.close()
+			
+			except Exception as e:
+				
+				self.log(f"Error closing connection for {user.addr}: {e}", level=0)
+		
+		self.clients.clear()
+
+		if self.socket:
+			try:
+				self.socket.close()
+			
+			except Exception as e:
+				self.log(f"Error closing server socket: {e}", level=0)
+
 
 
 def main():
