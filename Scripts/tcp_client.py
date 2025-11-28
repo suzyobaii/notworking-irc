@@ -24,21 +24,21 @@ def display_help():
     
 	# multi-line formatted string defining the help messages
     help_message = f"""
---- Chat Client Help Commands ---
+{Fore.CYAN + Style.BRIGHT}--- Chat Client Help Commands ---
 
-/connect <server-name> [port#] - connect to the specified server.
+{Fore.BLUE}/connect <server-name> [port#]{Fore.RESET}  - connect to the specified server.
 
-/nick <nickname>               - Pick a unique nickname.
+{Fore.BLUE}/nick <nickname>{Fore.RESET}               - Pick a unique nickname.
 
-/list                          - List all connected users.
+{Fore.BLUE}/list{Fore.RESET}                        - List all connected users.
 
-/join <channel>                - Join a specific channel.
+{Fore.BLUE}/join <channel>{Fore.RESET}                - Join a specific channel.
 
-/leave [<channel>]             - Leave the current or specific channel.
+{Fore.BLUE}/leave [<channel>]{Fore.RESET}            - Leave the current or specific channel.
 
-/quite					       - Leave chat and Disconnect from the server.
+{Fore.BLUE}/quit{Fore.RESET} 					       - Leave chat and Disconnect from the server.
 
-/help						   - Display this help message.
+{Fore.BLUE}/help{Fore.RESET} 						   - Display this help message.
 
 """
     print(help_message)
@@ -50,7 +50,7 @@ def connect_to_server(server_name, port):
 	global client_socket, connected
       
 	if connected:
-		print("---Already connected to a server.---")
+		print(Fore.YELLOW + "---Already connected to a server.---")
 		return
 	
 	try:
@@ -59,9 +59,9 @@ def connect_to_server(server_name, port):
 		connected = True
 
 		threading.Thread(target=receive_messages, daemon = True).start()
-		print(f"--- Connected to server {server_name}:{port} ---")
+		print(Fore.YELLOW + f"--- Connected to server {server_name}:{port} ---")
 	except Exception as e:
-		print(f"--- Connection failed: {e} ---")
+		print(Fore.RED + f"--- Connection failed: {e} ---")
 		connected = False
 		client_socket = None	
 
@@ -82,7 +82,7 @@ def disconnect_from_server():
 		finally:
 			connected = False
 			client_socket = None
-			print("--- Disconnected from server.---")
+			print(Fore.YELLOW + "--- Disconnected from server.---")
 		os._exit(0)
 	
 
@@ -93,7 +93,7 @@ def receive_messages():
 		try:
 			data = client_socket.recv(1024)
 			if not data:
-				print("\n--- Server closed the connection. ---")
+				print(Fore.RED + "\n--- Server closed the connection. ---")
 				disconnect_from_server()
 				break
 
@@ -102,12 +102,12 @@ def receive_messages():
 			sys.stdout.flush()
 		
 		except ConnectionResetError:
-			print("\n--- Connection lost. ---")
+			print(Fore.MAGENTA + "\n--- Connection lost. ---")
 			connected = False
 			break
 		except Exception as e:
 			if connected:
-				print(f"\n--- Error receiving message: {e} ---")
+				print(Fore.MAGENTA + f"\n--- Error receiving message: {e} ---")
 			connected = False
 			break
 
@@ -119,11 +119,11 @@ def send_message(message):
 		try:
 			client_socket.sendall(message.encode('utf-8'))
 		except Exception as e:
-			print(f"--- Error sending message: {e} ---")
+			print(Fore.RED + f"--- Error sending message: {e} ---")
 			connected = False
 			client_socket.close()
 	else:
-		print("--- Not connected to any server. ---")
+		print(Fore.MAGENTA + "--- Not connected to any server. ---")
 
 
 
@@ -134,7 +134,7 @@ def user_interface_loop():
 
 	def signal_handler(sign, frame):
 		# This is how we handle Ctrl+C
-		print(f"\n --- Keyboard Intrrpt. Exiting. . . ---")
+		print(Fore.RED + f"\n --- Keyboard Intrrpt. Exiting. . . ---")
 		disconnect_from_server()
 
 	signal.signal(signal.SIGINT, signal_handler)
@@ -172,7 +172,7 @@ def user_interface_loop():
 				elif connected:
 					if command == '/nick':
 						if len(args) != 1:
-							print("Usage: /nick <nickname>")
+							print(Fore.YELLOW + "Usage: /nick <nickname>")
 						else:
 							nickname = args[0]
 							client_socket.sendall(f"/nick {nickname}".encode())
@@ -182,7 +182,7 @@ def user_interface_loop():
 					
 					elif command == '/join':
 						if len(args) != 1:
-							print("Usage: /join <channel>")
+							print(Fore.GREEN + "Usage: /join <channel>")
 						else:
 							client_socket.sendall(f"/join {args[0]}".encode())
 					
@@ -191,16 +191,16 @@ def user_interface_loop():
 						client_socket.sendall(f"/leave {channel}".encode())
 					
 					else:
-						print("Unknown command. Type /help for a list of commands.")
+						print(Fore.RED + "Unknown command. Type /help for a list of commands.")
 
 				else:
-					print("Not connected to any server. Use /connect to connect.")
+					print(Fore.RED + "Not connected to any server. Use /connect to connect.")
 				
 			elif connected:
 				send_message(message)
 
 			else:
-				print("Not connected to any server. Use /connect to connect.")
+				print(Fore.RED + "Not connected to any server. Use /connect to connect.")
 		except EOFError:
 			disconnect_from_server()
 		
