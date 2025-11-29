@@ -26,7 +26,11 @@ class User:
 
 	def join_channel(self, channel):
 		if channel in self.channels:
-			return f"You are already in [{channel.name}]."
+			if channel == self.curr_channel:
+				return f"You are already in [{channel.name}]."
+			else:
+				self.curr_channel = channel
+				return f"You are now in [{channel.name}]."
 
 		self.channels.add(channel)
 		self.curr_channel = channel
@@ -80,7 +84,8 @@ class Channel:
 		message.sender = user.nickname
 		for member in self.users:
 			if member != user:
-				member.conn.sendall(serialize(message).encode('utf-8'))
+				if member.curr_channel == self:
+					member.conn.sendall(serialize(message).encode('utf-8'))
 
 	# Add a user to the channel when they use the /join command
 	def add_user(self, user):
@@ -91,7 +96,7 @@ class Channel:
 		self.users.remove(user)
 
 	def display_user_count(self):
-		return f"\n[{self.name}] has {len(self.users)} users."
+		return f"\n[{self.name}] has {len(self.users)} user(s)."
 
 
 """
@@ -167,6 +172,10 @@ class ChatServer:
 	only event or message objects.
 	"""
 	def handle_client(self, user):
+		# Assign user a unique nickname when they join the server
+		user.conn.sendall(serialize(Event(type="nick", 
+									  notif="You have been assigned a new nickname by default. Use /nick to change it.", 
+									  optional=user.nickname)).encode('utf-8'))
 		while True:
 			try:
 				data = user.conn.recv(1024)
@@ -181,7 +190,7 @@ class ChatServer:
 					if response.cmd == "/quit":
 						user.leave_all_channels()
 						self.clients.remove(user)
-						continue
+						break
 
 					if response.cmd == "/nick":
 						if response.args[0] in self.unique_nicknames:
@@ -196,7 +205,7 @@ class ChatServer:
 							event = Event(type="nick", notif=notif, optional=user.nickname)
 
 					elif response.cmd == "/list":
-						notif = "Channels on the servers:"
+						notif = "List of channels on the server:"
 						for channel in self.channels.values():
 							notif += channel.display_user_count()
 
@@ -248,11 +257,11 @@ class ChatServer:
 					raise ValueError("Unknown object type sent.")
 
 			except KeyboardInterrupt:
-				self.log("Server shutting down...", level=1)
+				self.log("\nServer shutting down...", level=1)
 
 
 	def shutdown(self):
-		self.log("server is shutting down...", level=0)
+		self.log("\nServer is shutting down...", level=0)
 
 		for user in list(self.clients):
 			
@@ -277,7 +286,7 @@ class ChatServer:
 def main():
 	"""
 	The server takes in arguments for the port and debug-level.
-	Type in terminal python3 tcp_server.py -p <port#> -d <debug-level>
+	Type in terminal python3 ChatServer.py -p <port#> -d <debug-level>
 	to pass arguments to the server. 
 	"""
 	parser = ArgumentParser(description='Create a Chat Server.')
