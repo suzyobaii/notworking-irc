@@ -4,12 +4,20 @@ import sys
 import os
 import signal
 
-# Logging and color
+# Logging and declaring the different colors
 import logging
-import colorama
+
 from log_setup import setupLogClient
-from colorama import Fore, Style, init
-init(autoreset=True)
+# ANSI color codes 
+RESET = "\033[0m"
+RED = "\033[31m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+BLUE = "\033[34m"
+MAGENTA = "\033[35m"
+CYAN = "\033[36m"
+BOLD = "\033[1m"
+
 
 setupLogClient()
 logging.info("Client Logging initialized")
@@ -24,21 +32,21 @@ def display_help():
     
 	# multi-line formatted string defining the help messages
     help_message = f"""
-{Fore.CYAN + Style.BRIGHT}--- Chat Client Help Commands ---
+{BOLD}{CYAN}--- Chat Client Help Commands ---{RESET}
 
-{Fore.BLUE}/connect <server-name> [port#]{Fore.RESET}  - connect to the specified server.
+{BLUE}/connect <server-name> [port#]{RESET}  - connect to the specified server.
 
-{Fore.BLUE}/nick <nickname>{Fore.RESET}               - Pick a unique nickname.
+{BLUE}/nick <nickname>{RESET}               - Pick a unique nickname.
 
-{Fore.BLUE}/list{Fore.RESET}                        - List all connected users.
+{BLUE}/list{RESET}                        - List all connected users.
 
-{Fore.BLUE}/join <channel>{Fore.RESET}                - Join a specific channel.
+{BLUE}/join <channel>{RESET}                - Join a specific channel.
 
-{Fore.BLUE}/leave [<channel>]{Fore.RESET}            - Leave the current or specific channel.
+{BLUE}/leave [<channel>]{RESET}            - Leave the current or specific channel.
 
-{Fore.BLUE}/quit{Fore.RESET} 					       - Leave chat and Disconnect from the server.
+{BLUE}/quit{RESET} 					       - Leave chat and Disconnect from the server.
 
-{Fore.BLUE}/help{Fore.RESET} 						   - Display this help message.
+{BLUE}/help{RESET} 						   - Display this help message.
 
 """
     print(help_message)
@@ -50,7 +58,7 @@ def connect_to_server(server_name, port):
 	global client_socket, connected
       
 	if connected:
-		print(Fore.YELLOW + "---Already connected to a server.---")
+		print(f"{YELLOW}---Already connected to a server.---{RESET}")
 		return
 	
 	try:
@@ -59,9 +67,9 @@ def connect_to_server(server_name, port):
 		connected = True
 
 		threading.Thread(target=receive_messages, daemon = True).start()
-		print(Fore.YELLOW + f"--- Connected to server {server_name}:{port} ---")
+		print(f"{YELLOW}--- Connected to server {server_name}:{port} ---{RESET}")
 	except Exception as e:
-		print(Fore.RED + f"--- Connection failed: {e} ---")
+		print(f"{RED}--- Connection failed: {e} ---{RESET}")
 		connected = False
 		client_socket = None	
 
@@ -82,7 +90,7 @@ def disconnect_from_server():
 		finally:
 			connected = False
 			client_socket = None
-			print(Fore.YELLOW + "--- Disconnected from server.---")
+			print(f"{RED}--- Disconnected from server.---{RESET}")
 		os._exit(0)
 	
 
@@ -93,7 +101,7 @@ def receive_messages():
 		try:
 			data = client_socket.recv(1024)
 			if not data:
-				print(Fore.RED + "\n--- Server closed the connection. ---")
+				print("{RED}\n--- Server closed the connection. ---{RESET}")
 				disconnect_from_server()
 				break
 
@@ -102,12 +110,12 @@ def receive_messages():
 			sys.stdout.flush()
 		
 		except ConnectionResetError:
-			print(Fore.MAGENTA + "\n--- Connection lost. ---")
+			print("{MAGENTA}\n--- Connection lost. ---{RESET}")
 			connected = False
 			break
 		except Exception as e:
 			if connected:
-				print(Fore.MAGENTA + f"\n--- Error receiving message: {e} ---")
+				print(f"{MAGENTA}\n--- Error receiving message: {e} ---{RESET}")
 			connected = False
 			break
 
@@ -119,11 +127,11 @@ def send_message(message):
 		try:
 			client_socket.sendall(message.encode('utf-8'))
 		except Exception as e:
-			print(Fore.RED + f"--- Error sending message: {e} ---")
+			print(f"{RED}--- Error sending message: {e} ---{RESET}")
 			connected = False
 			client_socket.close()
 	else:
-		print(Fore.MAGENTA + "--- Not connected to any server. ---")
+		print(f"{BLUE}--- Not connected to any server. ---{RESET}")
 
 
 
@@ -134,7 +142,7 @@ def user_interface_loop():
 
 	def signal_handler(sign, frame):
 		# This is how we handle Ctrl+C
-		print(Fore.RED + f"\n --- Keyboard Intrrpt. Exiting. . . ---")
+		print(f"{RED}\n --- Keyboard Intrrpt. Exiting. . . ---{RESET}")
 		disconnect_from_server()
 
 	signal.signal(signal.SIGINT, signal_handler)
@@ -144,7 +152,7 @@ def user_interface_loop():
 	while True:
 		try:
 			
-			prompt = f"{nickname}>"
+			prompt = f"{MAGENTA}{nickname}>{RESET}"
 			sys.stdout.write(prompt)
 			sys.stdout.flush()
 
@@ -172,7 +180,7 @@ def user_interface_loop():
 				elif connected:
 					if command == '/nick':
 						if len(args) != 1:
-							print(Fore.YELLOW + "Usage: /nick <nickname>")
+							print(f"{YELLOW}Usage: /nick <nickname>{RESET}")
 						else:
 							nickname = args[0]
 							client_socket.sendall(f"/nick {nickname}".encode())
@@ -182,7 +190,7 @@ def user_interface_loop():
 					
 					elif command == '/join':
 						if len(args) != 1:
-							print(Fore.GREEN + "Usage: /join <channel>")
+							print(f"{YELLOW}Usage: /join <channel>{RESET}")
 						else:
 							client_socket.sendall(f"/join {args[0]}".encode())
 					
@@ -191,16 +199,16 @@ def user_interface_loop():
 						client_socket.sendall(f"/leave {channel}".encode())
 					
 					else:
-						print(Fore.RED + "Unknown command. Type /help for a list of commands.")
+						print(f"{RED}Unknown command. Type /help for a list of commands.{RESET}")
 
 				else:
-					print(Fore.RED + "Not connected to any server. Use /connect to connect.")
+					print(f"{RED}Not connected to any server. Use /connect to connect.{RESET}")
 				
 			elif connected:
 				send_message(message)
 
 			else:
-				print(Fore.RED + "Not connected to any server. Use /connect to connect.")
+				print(f"{RED}Not connected to any server. Use /connect to connect.{RESET}")
 		except EOFError:
 			disconnect_from_server()
 		
