@@ -4,11 +4,10 @@ import random    # to choose one of three transformatons
 
 # Logging and colorama for colored text:
 import logging
-import colorama
+
 # enabling colorama (when testing remeber to pip install colorama before beginning, that's the only way this works)
 from log_setup import setupLogServer
-from colorama import Fore, Style, init
-init(autoreset=True)
+
 
 #Calling Logging
 setupLogServer()
