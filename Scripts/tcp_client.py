@@ -3,6 +3,18 @@ import threading
 import sys
 import os
 import signal
+from ChatProtocol import Command, Event, Message, serialize, deserialize
+
+# ANSI COlor Cides
+
+RESET = "\033[0m"
+BOLD = "\033[1m"
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+MAGENTA = "\033[95m"
+CYAN = "\033[96m"
 
 client_socket = None
 connected = False
@@ -13,21 +25,21 @@ def display_help():
     
 	# multi-line formatted string defining the help messages
     help_message = f"""
---- Chat Client Help Commands ---
+{BOLD}{GREEN}--- Chat Client Help Commands --- {RESET} 
 
-/connect <server-name> [port#] - connect to the specified server.
+{BLUE}/connect <server-name> [port#] - connect to the specified server.{RESET}
 
-/nick <nickname>               - Pick a unique nickname.
+{BLUE}/nick <nickname>               - Pick a unique nickname.{RESET}
 
-/list                          - List all connected users.
+{BLUE}/list                          - List all connected users.{RESET}
 
-/join <channel>                - Join a specific channel.
+{BLUE}/join <channel>                - Join a specific channel.{RESET}
 
-/leave [<channel>]             - Leave the current or specific channel.
+{BLUE}/leave [<channel>]             - Leave the current or specific channel.{RESET}
 
-/quite					       - Leave chat and Disconnect from the server.
+{BLUE}/quit                          - Leave chat and Disconnect from the server.{RESET}
 
-/help						   - Display this help message.
+{BLUE}/help                          - Display this help message.{RESET}
 
 """
     print(help_message)
@@ -39,7 +51,7 @@ def connect_to_server(server_name, port):
 	global client_socket, connected
       
 	if connected:
-		print("---Already connected to a server.---")
+		print(f"{YELLOW}---Already connected to a server.---{RESET}")
 		return
 	
 	try:
@@ -48,9 +60,9 @@ def connect_to_server(server_name, port):
 		connected = True
 
 		threading.Thread(target=receive_messages, daemon = True).start()
-		print(f"--- Connected to server {server_name}:{port} ---")
+		print(f"{YELLOW}--- Connected to server {server_name}:{port} ---{RESET}")
 	except Exception as e:
-		print(f"--- Connection failed: {e} ---")
+		print(f"{RED}--- Connection failed: {e} ---{RESET}")
 		connected = False
 		client_socket = None	
 
@@ -63,7 +75,7 @@ def disconnect_from_server():
 		try:
 
 			if client_socket:
-				client_socket.sendall("/quit".encode('utf-8))'))
+				client_socket.sendall(serialize(Command(cmd="/quit")).encode('utf-8'))
 			client_socket.close()
 		
 		except:
@@ -71,32 +83,45 @@ def disconnect_from_server():
 		finally:
 			connected = False
 			client_socket = None
-			print("--- Disconnected from server.---")
+			print(f"{RED}--- Disconnected from server.---{RESET}")
 		os._exit(0)
 	
 
 def receive_messages():
-	global connected
+	global connected, nickname
 
 	while connected:
 		try:
 			data = client_socket.recv(1024)
 			if not data:
-				print("\n--- Server closed the connection. ---")
+				print(f"\n{RED}--- Server closed the connection. ---{RESET}")
 				disconnect_from_server()
 				break
 
-			print(f"\r{data.decode('utf-8')}\n", end='')
-			sys.stdout(f"{nickname}>")
+			response = deserialize(data.decode('utf-8'))
+
+			if isinstance(response, Event):
+				print(f"\r{response.notif}\n", end='')
+
+				if response.type == "nick":
+					nickname = response.optional
+
+			elif isinstance(response, Message):
+				print(f"\r{response.sender}>{response.content}\n", end='')
+
+			else:
+				raise ValueError(f"{MAGENTA}Unknown response sent.{RESET}")
+
+			sys.stdout.write(f"{CYAN}{nickname}>{RESET}")
 			sys.stdout.flush()
 		
 		except ConnectionResetError:
-			print("\n--- Connection lost. ---")
+			print(f"{MAGENTA}\n--- Connection lost. ---{RESET}")
 			connected = False
 			break
 		except Exception as e:
 			if connected:
-				print(f"\n--- Error receiving message: {e} ---")
+				print(f"{MAGENTA}\n--- Error receiving message: {e} ---{RESET}")
 			connected = False
 			break
 
@@ -106,13 +131,14 @@ def send_message(message):
 
 	if connected and client_socket:
 		try:
-			client_socket.sendall(message.encode('utf-8'))
+			msg = Message(content=message)
+			client_socket.sendall(serialize(msg).encode('utf-8'))
 		except Exception as e:
-			print(f"--- Error sending message: {e} ---")
+			print(f"{RED}--- Error sending message: {e} ---{RESET}")
 			connected = False
 			client_socket.close()
 	else:
-		print("--- Not connected to any server. ---")
+		print(f"{BLUE}--- Not connected to any server. ---{RESET}")
 
 
 
@@ -123,7 +149,7 @@ def user_interface_loop():
 
 	def signal_handler(sign, frame):
 		# This is how we handle Ctrl+C
-		print(f"\n --- Keyboard Intrrpt. Exiting. . . ---")
+		print(f"{RED}\n --- Keyboard Intrrpt. Exiting. . . ---{RESET}")
 		disconnect_from_server()
 
 	signal.signal(signal.SIGINT, signal_handler)
@@ -133,7 +159,7 @@ def user_interface_loop():
 	while True:
 		try:
 			
-			prompt = f"{nickname}>"
+			prompt = f"{MAGENTA}{nickname}>{RESET}"
 			sys.stdout.write(prompt)
 			sys.stdout.flush()
 
@@ -142,54 +168,55 @@ def user_interface_loop():
 			if not message:
 				continue
 
-			if message.startswith('/'):
+			if message.startswith('/'): # if the message is a command
 				split = message.split()
-				command = split[0].lower()
+				cmd = split[0].lower()
 				args = split[1:]
 
-				if command == '/connect':
+				if cmd == '/connect':
 					host = args[0]
 					port = int(args[1]) if len(args) > 1 else 65432 # maximum port number
 					connect_to_server(host, port)
 				
-				elif command == '/quit':
+				elif cmd == '/quit':
 					disconnect_from_server()
 
-				elif command == '/help':
+				elif cmd == '/help':
 					display_help()
 				
 				elif connected:
-					if command == '/nick':
+					command = Command(cmd=cmd, args=args)
+
+					if cmd == '/nick':
 						if len(args) != 1:
-							print("Usage: /nick <nickname>")
+							print(f"{YELLOW}Usage: /nick <nickname>{RESET}")
 						else:
-							nickname = args[0]
-							client_socket.sendall(f"/nick {nickname}".encode())
+							#nickname = args[0]
+							client_socket.sendall(serialize(command).encode('utf-8'))
 					
-					elif command == '/list':
-						client_socket.sendall("/list".encode())
+					elif cmd == '/list':
+						client_socket.sendall(serialize(command).encode('utf-8'))
 					
-					elif command == '/join':
+					elif cmd == '/join':
 						if len(args) != 1:
-							print("Usage: /join <channel>")
+							print(f"{YELLOW}Usage: /join <channel>{RESET}")
 						else:
-							client_socket.sendall(f"/join {args[0]}".encode())
+							client_socket.sendall(serialize(command).encode('utf-8'))
 					
-					elif command == '/leave':
-						channel = args[0] if args else ""
-						client_socket.sendall(f"/leave {channel}".encode())
+					elif cmd == '/leave':
+						client_socket.sendall(serialize(command).encode('utf-8'))
 					
 					else:
-						print("Unknown command. Type /help for a list of commands.")
+						print(f"{RED}Unknown command. Type /help for a list of commands.{RESET}")
 
 				else:
-					print("Not connected to any server. Use /connect to connect.")
+					print(f"{RED}Not connected to any server. Use /connect to connect.{RESET}")
 				
 			elif connected:
 				send_message(message)
 
 			else:
-				print("Not connected to any server. Use /connect to connect.")
+				print(f"{RED}Not connected to any server. Use /connect to connect.{RESET}")
 		except EOFError:
 			disconnect_from_server()
 		
