@@ -118,7 +118,7 @@ def receive_messages():
 			else:
 				raise ValueError(f"{MAGENTA}Unknown response sent.{RESET}")
 
-			sys.stdout.write(f"{MAGENTA}{nickname}>{RESET}")
+			sys.stdout.write(f"{CYAN}{nickname}>{RESET}")
 			sys.stdout.flush()
 		
 		except ConnectionResetError:
