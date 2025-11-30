@@ -84,8 +84,10 @@ class Channel:
 		message.sender = user.nickname
 		for member in self.users:
 			if member != user:
-				if member.curr_channel == self:
-					member.conn.sendall(serialize(message).encode('utf-8'))
+				if member.curr_channel != self: # include what channel the message comes from
+					message.channel = self.name
+
+				member.conn.sendall(serialize(message).encode('utf-8'))
 
 	# Add a user to the channel when they use the /join command
 	def add_user(self, user):

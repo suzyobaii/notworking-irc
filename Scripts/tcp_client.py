@@ -5,6 +5,18 @@ import os
 import signal
 from ChatProtocol import Command, Event, Message, serialize, deserialize
 
+# ANSI COlor Cides
+
+RESET = "\033[0m"
+BOLD = "\033[1m"
+RED = "\033[91m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+MAGENTA = "\033[95m"
+CYAN = "\033[96m"
+END_COLOR = "\33[0m"
+
 client_socket = None
 connected = False
 nickname = "Guest"
@@ -14,21 +26,21 @@ def display_help():
     
 	# multi-line formatted string defining the help messages
     help_message = f"""
---- Chat Client Help Commands ---
+{BOLD}{GREEN}--- Chat Client Help Commands --- {RESET} 
 
-/connect <server-name> [port#] - connect to the specified server.
+{BLUE}/connect <server-name> [port#] - connect to the specified server.{RESET}
 
-/nick <nickname>               - Pick a unique nickname.
+{BLUE}/nick <nickname>               - Pick a unique nickname.{RESET}
 
-/list                          - List all connected users.
+{BLUE}/list                          - List all connected users.{RESET}
 
-/join <channel>                - Join a specific channel.
+{BLUE}/join <channel>                - Join a specific channel.{RESET}
 
-/leave [<channel>]             - Leave the current or specific channel.
+{BLUE}/leave [<channel>]             - Leave the current or specific channel.{RESET}
 
-/quit					       - Leave chat and Disconnect from the server.
+{BLUE}/quit                          - Leave chat and Disconnect from the server.{RESET}
 
-/help						   - Display this help message.
+{BLUE}/help                          - Display this help message.{RESET}
 
 """
     print(help_message)
@@ -40,7 +52,7 @@ def connect_to_server(server_name, port):
 	global client_socket, connected
       
 	if connected:
-		print("---Already connected to a server.---")
+		print(f"{YELLOW}---Already connected to a server.---{RESET}")
 		return
 	
 	try:
@@ -49,9 +61,9 @@ def connect_to_server(server_name, port):
 		connected = True
 
 		threading.Thread(target=receive_messages, daemon = True).start()
-		print(f"--- Connected to server {server_name}:{port} ---")
+		print(f"{YELLOW}--- Connected to server {server_name}:{port} ---{RESET}")
 	except Exception as e:
-		print(f"--- Connection failed: {e} ---")
+		print(f"{RED}--- Connection failed: {e} ---{RESET}")
 		connected = False
 		client_socket = None	
 
@@ -72,7 +84,7 @@ def disconnect_from_server():
 		finally:
 			connected = False
 			client_socket = None
-			print("--- Disconnected from server.---")
+			print(f"{RED}--- Disconnected from server.---{RESET}")
 		os._exit(0)
 	
 
@@ -83,7 +95,7 @@ def receive_messages():
 		try:
 			data = client_socket.recv(1024)
 			if not data:
-				print("\n--- Server closed the connection. ---")
+				print(f"\n{RED}--- Server closed the connection. ---{RESET}")
 				disconnect_from_server()
 				break
 
@@ -96,21 +108,24 @@ def receive_messages():
 					nickname = response.optional
 
 			elif isinstance(response, Message):
-				print(f"\r{response.sender}>{response.content}\n", end='')
+				if response.channel: # Label message as a notification
+					print(f"\r{GREEN}FROM [{response.channel}] {END_COLOR}{CYAN}{response.sender}>{END_COLOR}{response.content}\n", end='')
+				else:
+					print(f"\r{CYAN}{response.sender}>{END_COLOR}{response.content}\n", end='')
 
 			else:
-				raise ValueError("Unknown response sent.")
+				raise ValueError(f"{MAGENTA}Unknown response sent.{RESET}")
 
-			sys.stdout.write(f"{nickname}>")
+			sys.stdout.write(f"{MAGENTA}{nickname}>{END_COLOR}{RESET}")
 			sys.stdout.flush()
 		
 		except ConnectionResetError:
-			print("\n--- Connection lost. ---")
+			print(f"{MAGENTA}\n--- Connection lost. ---{RESET}")
 			connected = False
 			break
 		except Exception as e:
 			if connected:
-				print(f"\n--- Error receiving message: {e} ---")
+				print(f"{MAGENTA}\n--- Error receiving message: {e} ---{RESET}")
 			connected = False
 			break
 
@@ -123,11 +138,11 @@ def send_message(message):
 			msg = Message(content=message)
 			client_socket.sendall(serialize(msg).encode('utf-8'))
 		except Exception as e:
-			print(f"--- Error sending message: {e} ---")
+			print(f"{RED}--- Error sending message: {e} ---{RESET}")
 			connected = False
 			client_socket.close()
 	else:
-		print("--- Not connected to any server. ---")
+		print(f"{BLUE}--- Not connected to any server. ---{RESET}")
 
 
 
@@ -138,7 +153,7 @@ def user_interface_loop():
 
 	def signal_handler(sign, frame):
 		# This is how we handle Ctrl+C
-		print(f"\n --- Keyboard Intrrpt. Exiting. . . ---")
+		print(f"{RED}\n --- Keyboard Intrrpt. Exiting. . . ---{RESET}")
 		disconnect_from_server()
 
 	signal.signal(signal.SIGINT, signal_handler)
@@ -148,7 +163,7 @@ def user_interface_loop():
 	while True:
 		try:
 			
-			prompt = f"{nickname}>"
+			prompt = f"{MAGENTA}{nickname}>{END_COLOR}{RESET}"
 			sys.stdout.write(prompt)
 			sys.stdout.flush()
 
@@ -178,7 +193,7 @@ def user_interface_loop():
 
 					if cmd == '/nick':
 						if len(args) != 1:
-							print("Usage: /nick <nickname>")
+							print(f"{YELLOW}Usage: /nick <nickname>{RESET}")
 						else:
 							#nickname = args[0]
 							client_socket.sendall(serialize(command).encode('utf-8'))
@@ -188,7 +203,7 @@ def user_interface_loop():
 					
 					elif cmd == '/join':
 						if len(args) != 1:
-							print("Usage: /join <channel>")
+							print(f"{YELLOW}Usage: /join <channel>{RESET}")
 						else:
 							client_socket.sendall(serialize(command).encode('utf-8'))
 					
@@ -196,16 +211,16 @@ def user_interface_loop():
 						client_socket.sendall(serialize(command).encode('utf-8'))
 					
 					else:
-						print("Unknown command. Type /help for a list of commands.")
+						print(f"{RED}Unknown command. Type /help for a list of commands.{RESET}")
 
 				else:
-					print("Not connected to any server. Use /connect to connect.")
+					print(f"{RED}Not connected to any server. Use /connect to connect.{RESET}")
 				
 			elif connected:
 				send_message(message)
 
 			else:
-				print("Not connected to any server. Use /connect to connect.")
+				print(f"{RED}Not connected to any server. Use /connect to connect.{RESET}")
 		except EOFError:
 			disconnect_from_server()
 		

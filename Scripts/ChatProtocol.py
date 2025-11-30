@@ -26,6 +26,7 @@ class Event:
 class Message:
     content: str
     sender: str = None
+    channel: str = None
 
 
 # Converts dataclass instance to json
