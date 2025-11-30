@@ -246,7 +246,7 @@ class ChatServer:
 
 					elif response.cmd == "/join":
 						channel = response.args[0]
-						logging.info(f"{user.nickname} requested to joing the channel: {channel.name}")
+						logging.info(f"{user.nickname} requested to joing the channel: {self.channels[channel].name}")
 						if channel in self.channels:
 							notif = user.join_channel(self.channels[channel])
 							event = Event(type="join", notif=notif)
@@ -270,7 +270,6 @@ class ChatServer:
 						# Case for leaving the channel the user is currently in
 						else:
 							channel = user.curr_channel
-							logging.info(f"{user.nickname} sent the  message: {response.content}")
 							if channel:
 								user.leave_channel(channel)
 								event = Event(type="leave", notif=f"You have left [{channel.name}].")
