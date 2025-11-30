@@ -1,7 +1,7 @@
 import logging
 import os
 
-# Ensure logs directory exists
+# Makes sure that the logging directory exists by force
 LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
@@ -12,7 +12,7 @@ def setupLogClient():
         filename=log_path,
         level=logging.INFO,
         format="%(asctime)s - %(levelname)s - %(message)s",
-        force=True  # overwrite previous config
+        force=True  # was the main issue, since basicConfig was happening twice and the second wasnt being considered.  now this makes sure it works
     )
 
 def setupLogServer():
