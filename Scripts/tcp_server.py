@@ -28,7 +28,7 @@ class User:
 		self.channels = {self.curr_channel}
 
 		User.user_id += 1 # When a new user is added, increment the id
-		logging.info(f"A new connection from {addr} that was assigned the nickname {user.nickname}")
+		logging.info(f"A new connection from {addr} that was assigned the nickname {self.nickname}")
 
 	def join_channel(self, channel):
 		if channel in self.channels:
@@ -222,7 +222,7 @@ class ChatServer:
 
 					if response.cmd == "/nick":
 						if response.args[0] in self.unique_nicknames:
-							logging.warning(f"the nickname {newnick} already taken")
+							logging.warning(f"the nickname {user.nickname} already taken")
 							event = Event(type="error", notif="Nickname already taken. Try another nickname.")
 						else:
 							if user.nickname in self.unique_nicknames:
@@ -231,7 +231,7 @@ class ChatServer:
 							user.nickname = response.args[0]
 							self.unique_nicknames.add(user.nickname)
 							notif = f"Nickname updated to {user.nickname}"
-							logging.info(f"the nickname changed to {newnick}")
+							logging.info(f"the nickname changed to {user.nickname}")
 							event = Event(type="nick", notif=notif, optional=user.nickname)
 
 					elif response.cmd == "/list":
@@ -246,7 +246,7 @@ class ChatServer:
 
 					elif response.cmd == "/join":
 						channel = response.args[0]
-						logging.info(f"{user.nickname} requested to joing the channel: {channel_name}")
+						logging.info(f"{user.nickname} requested to joing the channel: {channel.name}")
 						if channel in self.channels:
 							notif = user.join_channel(self.channels[channel])
 							event = Event(type="join", notif=notif)
