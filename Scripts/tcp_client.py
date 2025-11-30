@@ -5,6 +5,9 @@ import os
 import signal
 from ChatProtocol import Command, Event, Message, serialize, deserialize
 
+import logging
+from logger import setupLogClient
+
 # ANSI COlor Cides
 
 RESET = "\033[0m"
@@ -15,7 +18,6 @@ YELLOW = "\033[93m"
 BLUE = "\033[94m"
 MAGENTA = "\033[95m"
 CYAN = "\033[96m"
-END_COLOR = "\33[0m"
 
 client_socket = None
 connected = False
@@ -109,14 +111,14 @@ def receive_messages():
 
 			elif isinstance(response, Message):
 				if response.channel: # Label message as a notification
-					print(f"\r{GREEN}FROM [{response.channel}] {END_COLOR}{CYAN}{response.sender}>{END_COLOR}{response.content}\n", end='')
+					print(f"\r{GREEN}FROM [{response.channel}] {RESET}{CYAN}{response.sender}>{RESET}{response.content}\n", end='')
 				else:
-					print(f"\r{CYAN}{response.sender}>{END_COLOR}{response.content}\n", end='')
+					print(f"\r{CYAN}{response.sender}>{RESET}{response.content}\n", end='')
 
 			else:
 				raise ValueError(f"{MAGENTA}Unknown response sent.{RESET}")
 
-			sys.stdout.write(f"{MAGENTA}{nickname}>{END_COLOR}{RESET}")
+			sys.stdout.write(f"{MAGENTA}{nickname}>{RESET}")
 			sys.stdout.flush()
 		
 		except ConnectionResetError:
@@ -147,6 +149,11 @@ def send_message(message):
 
 
 def user_interface_loop():
+	
+	setupLogClient()
+	logging.info("Client Logging initialized")
+
+
 	# This function will handle user input and command functionality
 
 	global nickname, connected, client_socket # Access global variables
@@ -163,7 +170,7 @@ def user_interface_loop():
 	while True:
 		try:
 			
-			prompt = f"{MAGENTA}{nickname}>{END_COLOR}{RESET}"
+			prompt = f"{MAGENTA}{nickname}>{RESET}"
 			sys.stdout.write(prompt)
 			sys.stdout.flush()
 

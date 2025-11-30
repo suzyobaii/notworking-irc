@@ -3,6 +3,10 @@ import threading
 from ChatProtocol import Command, Event, Message, serialize, deserialize
 from argparse import ArgumentParser
 
+import logging
+from logger import setupLogServer
+
+
 
 """
 A user represents a client in the server. Each user in the server 
@@ -286,6 +290,8 @@ class ChatServer:
 
 
 def main():
+	setupLogServer()
+	logging.info("Server Logging initialized")
 	"""
 	The server takes in arguments for the port and debug-level.
 	Type in terminal python3 ChatServer.py -p <port#> -d <debug-level>
