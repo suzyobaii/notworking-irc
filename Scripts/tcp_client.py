@@ -24,6 +24,7 @@ connected = False
 nickname = "Guest"
 
 def display_help():
+    logging.info("Displayed help menu")
     # List available commands
     
 	# multi-line formatted string defining the help messages
@@ -52,8 +53,10 @@ def connect_to_server(server_name, port):
 	# connect to a server using the provided server name and port
     
 	global client_socket, connected
+	logging.info(f"Attempted connection to {server_name}:{port}")
       
 	if connected:
+		logging.warning("Attempted to connect while already connected")
 		print(f"{YELLOW}---Already connected to a server.---{RESET}")
 		return
 	
@@ -62,9 +65,12 @@ def connect_to_server(server_name, port):
 		client_socket.connect((server_name, port))
 		connected = True
 
+		logging.info(f"Successfully connected to the {server_name}:{port}")
+
 		threading.Thread(target=receive_messages, daemon = True).start()
 		print(f"{YELLOW}--- Connected to server {server_name}:{port} ---{RESET}")
 	except Exception as e:
+		logging.error(f"Connection failed: {e}")
 		print(f"{RED}--- Connection failed: {e} ---{RESET}")
 		connected = False
 		client_socket = None	
@@ -73,6 +79,7 @@ def connect_to_server(server_name, port):
 def disconnect_from_server():
 
 	global client_socket, connected
+	logging.info("Client requested disconnect")
 
 	if connected:
 		try:
@@ -82,6 +89,7 @@ def disconnect_from_server():
 			client_socket.close()
 		
 		except:
+			logging.error(f"Error while disconnecting: {e}")
 			pass
 		finally:
 			connected = False
@@ -92,22 +100,26 @@ def disconnect_from_server():
 
 def receive_messages():
 	global connected, nickname
+	logging.info("Started message receiver thread")
 
 	while connected:
 		try:
 			data = client_socket.recv(1024)
 			if not data:
+				logging.warning(" The srver closed the connection")
 				print(f"\n{RED}--- Server closed the connection. ---{RESET}")
 				disconnect_from_server()
 				break
 
 			response = deserialize(data.decode('utf-8'))
+			logging.info(f"received the message: {response}")
 
 			if isinstance(response, Event):
 				print(f"\r{response.notif}\n", end='')
 
 				if response.type == "nick":
 					nickname = response.optional
+					logging.info(f"The nickname was updated to {nickname}")
 
 			elif isinstance(response, Message):
 				if response.channel: # Label message as a notification
@@ -116,12 +128,15 @@ def receive_messages():
 					print(f"\r{CYAN}{response.sender}>{RESET}{response.content}\n", end='')
 
 			else:
+				logging.error("received an unknown response")
 				raise ValueError(f"{MAGENTA}Unknown response sent.{RESET}")
 
 			sys.stdout.write(f"{CYAN}{nickname}>{RESET}")
 			sys.stdout.flush()
 		
 		except ConnectionResetError:
+			logging.error(f"receive this error: {e}")
+			logging.error("Connection lost (ConnectionResetError)")
 			print(f"{MAGENTA}\n--- Connection lost. ---{RESET}")
 			connected = False
 			break
@@ -134,22 +149,24 @@ def receive_messages():
 
 def send_message(message):
 	global client_socket, connected
-
+	logging.info(f"{nickname} typed: {message}")
 	if connected and client_socket:
 		try:
+			logging.info("Sent message to server")
 			msg = Message(content=message)
 			client_socket.sendall(serialize(msg).encode('utf-8'))
 		except Exception as e:
+			logging.error(f"Error sending message: {e}")
 			print(f"{RED}--- Error sending message: {e} ---{RESET}")
 			connected = False
 			client_socket.close()
 	else:
+		logging.warning("There was an attempt to send message while disconnected")
 		print(f"{BLUE}--- Not connected to any server. ---{RESET}")
 
 
 
 def user_interface_loop():
-	
 	setupLogClient()
 	logging.info("Client Logging initialized")
 
@@ -160,6 +177,7 @@ def user_interface_loop():
 
 	def signal_handler(sign, frame):
 		# This is how we handle Ctrl+C
+		logging.warning("The keyboard interrupt received")
 		print(f"{RED}\n --- Keyboard Intrrpt. Exiting. . . ---{RESET}")
 		disconnect_from_server()
 
@@ -175,6 +193,7 @@ def user_interface_loop():
 			sys.stdout.flush()
 
 			message = sys.stdin.readline().strip()
+			logging.info(f"User input received: {message}")
 
 			if not message:
 				continue
@@ -183,6 +202,7 @@ def user_interface_loop():
 				split = message.split()
 				cmd = split[0].lower()
 				args = split[1:]
+				logging.info(f"User entered command: {cmd} Args: {args}")
 
 				if cmd == '/connect':
 					host = args[0]
@@ -197,6 +217,7 @@ def user_interface_loop():
 				
 				elif connected:
 					command = Command(cmd=cmd, args=args)
+					logging.info(f"Sent command to server: {command}")
 
 					if cmd == '/nick':
 						if len(args) != 1:
@@ -219,9 +240,11 @@ def user_interface_loop():
 					
 					else:
 						print(f"{RED}Unknown command. Type /help for a list of commands.{RESET}")
+						logging.warning("A command was entered while disconnected")
 
 				else:
 					print(f"{RED}Not connected to any server. Use /connect to connect.{RESET}")
+					logging.warning("The user tried to send chat message while disconnected")
 				
 			elif connected:
 				send_message(message)
@@ -230,8 +253,10 @@ def user_interface_loop():
 				print(f"{RED}Not connected to any server. Use /connect to connect.{RESET}")
 		except EOFError:
 			disconnect_from_server()
+			logging.warning("EOF... disconnecting")
 		
 		except Exception as e:
+			logging.error(f"Other error: {e}")
 			disconnect_from_server()
 
 if __name__ == "__main__":
