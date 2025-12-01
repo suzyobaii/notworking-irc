@@ -33,20 +33,20 @@ notworking-irc/
 - All project files are in the `Scripts/` folder inside the project directory 
 
         1. Open terminal and make sure you are in the 'Scripts` folder so cd /path/to/notworking-irc/Scripts. You can check by typing: 
-       ''' % ls'''
+       ``` % ls```
         You should see the project files like tcp_server.py and tcp_client.py
     
         2. Start the server by running in the terminal: 
-            '''% python3 tcp_server.py -p 65432 -d 1'''
+            ```% python3 tcp_server.py -p 65432 -d 1```
     
         You should see the message:
-       ''' TCP server listening on 127.0.0.1 : 65432'''
+       ``` TCP server listening on 127.0.0.1 : 65432```
        
         3. Open another terminal window (or a split terminal) to run the client. You can run multiple clients in different windows to test multiple users:
-           ''' % python3 tcp_client.py'''
+           ``` % python3 tcp_client.py```
     
         4. After starting, the client will display the help menu with all available commands. You should see:
-          '''  Guest>'''
+          ```  Guest>```
     
         Note: use /help in the client for a full list of commands at any time.
     
@@ -56,26 +56,26 @@ notworking-irc/
         You should see confirmation that the client connected successfully, along with a default nickname message.
     
         6. Change your nickname if desired, for exmaple:  
-            '''/nick kelly '''
+            ```/nick kelly ```
        
         7. Open more terminal windows to create up to 4 clients, and assign each a unique nickname.
     
         8. To see all channels and the number of users in each, type:
-           ''' /list'''
+           ``` /list```
        
         9. To join a channel, type:
-           ''' /join <channel_name>'''
+           ``` /join <channel_name>```
        
         10. To chat, just type any message in the client window and users in the same channel will see your messages with their nicknames.
     
         11. To leave a channel:  
-            '''/leave <channel_name>'''
+            ```/leave <channel_name>```
         
         12. To switch to a different channel: 
-          '''  /join <new_channel_name>'''
+          ```  /join <new_channel_name>```
         
         13. To disconnect the client:    
-            '''/quit'''
+            ```/quit```
         
         14. To shut down the server manually, press `Ctrl+C`. If idle for 3 minutes, the server will automatically shut down.
 
