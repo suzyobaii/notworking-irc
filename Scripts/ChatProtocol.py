@@ -1,7 +1,3 @@
-from dataclasses import dataclass, asdict
-from json import dumps, loads
-
-
 """
 An object-based protocol means messages, commands, and events are
 sent between client and server through serialized objects (like JSON).
@@ -9,6 +5,9 @@ The client sends commands and messages to the server. In response, the
 server sends an event to the client when a command is executed and broadcasts
 messages sent from the client to other clients in the same channel.
 """
+from dataclasses import dataclass, asdict
+from json import dumps, loads
+
 @dataclass
 class Command:
     cmd: str
@@ -29,7 +28,7 @@ class Message:
     channel: str = None
 
 
-# Converts dataclass instance to json
+# Converts dataclass instance to json, referenced ai
 def serialize(obj):
     return dumps(asdict(obj))
 

@@ -1,3 +1,12 @@
+"""
+The ChatServer represents a tcp server that can accept up to 4 concurrent 
+threads and hosts multiple channels. ChatClients can connect and interact
+witht the server via commands. A ChatProtocol is used to manage the 
+communication between the server and the client through dataclass objects
+such as Command, Event, and Message, which are serialized to JSON and sent
+through socket connection. 
+"""
+
 import socket
 import threading
 from ChatProtocol import Command, Event, Message, serialize, deserialize
@@ -7,17 +16,17 @@ import logging
 from logger import setupLogServer
 
 
-
-"""
-A user represents a client in the server. Each user in the server 
-needs to have a unique name. When a client joins the server they are
-automatically generated a nickname via the user_id counter and they
-are put in a channel by themselves. 
-"""
 class User:
+	"""
+	The User Class represents a client in the server. Each user in the server 
+	needs to have a unique name. When a client joins the server they are
+	automatically generated a nickname via the user_id counter. References to a
+	client's socket and address are stored in the class. Additionally, the 
+	client's current channel and the list of channels they are in are tracked.  
+	"""
+	
 	user_id = 1 # Class wide variable
 	
-
 	def __init__(self, conn, addr):
 		self.conn = conn
 		self.addr = addr
@@ -31,6 +40,7 @@ class User:
 		logging.info(f"A new connection from {addr} that was assigned the nickname {self.nickname}")
 
 	def join_channel(self, channel):
+		"""A user can join a specific channel or can switch to that channel if they are already in one."""
 		if channel in self.channels:
 			if channel == self.curr_channel:
 				return f"You are already in [{channel.name}]."
@@ -46,18 +56,24 @@ class User:
 		return f"You have joined [{channel.name}]."
 
 	def leave_channel(self, channel):
+		"""A user can leave a specific channel or leave the one they are currently in."""
 		self.channels.remove(channel)
 		self.curr_channel = None
 		channel.remove_user(self)
 		logging.info(f"{self.nickname} left the channel [{channel.name}]")
 
-	def leave_all_channels(self): # triggers when a client quits the server
+	def leave_all_channels(self):
+		"""
+		This function is triggered when a client quits the server and
+		the user leaves all the channels they are in.
+		"""
 		logging.info(f"{self.nickname} is leaving all channels (disconnecting)")
 		if self.channels:
 			for channel in self.channels:
 				channel.remove_user(self)
 
 	def display_channels(self):
+		"""Display the channels the user is a member of and what channel they are currently in."""
 		if self.channels:
 			display = "\nYou are a member of the channel(s):"
 			for channel in self.channels:
@@ -73,12 +89,13 @@ class User:
 		return display
 
 
-"""
-A channel is a named group of one or more clients. All clients receive
-messages addressed to the channel. A channel is created when a client
-joins. A client can reference the channel using the channel name. 
-"""
 class Channel:
+	"""
+	A channel is a named group of one or more clients. A channel name is generated
+	via the channel_id. All clients receive messages addressed to the channel. 
+	A channel is created when a client joins the ChatServer. A client can reference 
+	the channel using the channel name. 
+	"""
 	channel_id = 1 # class wide variable
 
 	def __init__(self, user, name=None):
@@ -90,8 +107,13 @@ class Channel:
 			Channel.channel_id += 1
 			logging.info(f"Channel created: {self.name} with initial user {user.nickname}")
 
-	# Messages sent to the channel are broadcast to all users (except sender)
-	def broadcast(self, user, message):
+	def broadcast(self, user, message): # referenced ai
+		"""
+		Messages sent to the channel are broadcast to all users except the sender.
+		If a user is a member of the channel but not currently in the channel, the user
+		will receive the message as a notification, which tells the user what channel
+		the message comes from. 
+		"""
 		message.sender = user.nickname
 		logging.info(f"A message broadcast by {user.nickname} in [{self.name}]")
 
@@ -102,29 +124,31 @@ class Channel:
 
 				member.conn.sendall(serialize(message).encode('utf-8'))
 
-	# Add a user to the channel when they use the /join command
 	def add_user(self, user):
+		"""Add a user to the channel when they use the /join command."""
 		self.users.add(user)
 		logging.info(f"{user.nickname} was added to channel [{self.name}]")
 
-	# Remove a user when they use the /leave command
 	def remove_user(self, user):
+		"""Remove a user from the channel when they use the /leave command."""
 		self.users.remove(user)
 		logging.info(f"{user.nickname} was removed from channel [{self.name}]")
 
 	def display_user_count(self):
+		"""Display the channel name and the number of users it has."""
 		return f"\n[{self.name}] has {len(self.users)} user(s)."
 
 
-"""
-A Server is a place where clients can connect to. It takes in a 
-port number and a debug level (0 or 1) as arguments. Channels are 
-created in servers. The server logs user interactions and manages
-channels and clients. The server should automatically shutdown when
-there is no activity for 3 minutes. A maximum of 4 clients can be
-on the server at the same time. 
-"""
+
 class ChatServer:
+	"""
+	A ChatServer is a place where clients can connect to. It takes in a 
+	port number and a debug level (0 or 1) as arguments. Channels are 
+	created in servers. The server logs user interactions and manages
+	channels and clients. The server should automatically shutdown when
+	there is no activity for 3 minutes. A maximum of 4 clients can be
+	on the server at the same time. 
+	"""
 	def __init__(self, port, debug_level=0):
 		self.host = '127.0.0.1'
 		self.port = port
@@ -135,17 +159,20 @@ class ChatServer:
 		self.unique_nicknames = set()
 	
 	def log(self, message, level=1):
-		# level 0 = crit error, level 1 = all venets
+		# level 0 = crit error, level 1 = all events
 		if level <= self.debug_level:
 			print(message)
 
-	# Server will start running at the port number
 	def startup(self):
+		"""
+		The server will start running at the port number given and will
+		accept a maximum of 4 clients. 
+		"""
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 		self.socket.bind((self.host, self.port))
-		self.socket.listen(4) # Maximum of 4 threads (clients)
+		self.socket.listen(4)
 
 		self.log(f"TCP server listening on {self.host} : {self.port}", level=0)
 		logging.info(f"Server started on {self.host}:{self.port}")
@@ -153,6 +180,10 @@ class ChatServer:
 
 
 	def accept_clients(self):
+		"""
+		The server will accept ChatClients and create a user and channel instance
+		dedicated to the new ChatClient.
+		"""
 		self.socket.settimeout(180) # 3 minute timeout for idle server
 		try:
 			while True:
@@ -186,14 +217,13 @@ class ChatServer:
 			self.shutdown()
 
 
-
-	"""
-	Protocol objects are transmitted between server and client. 
-	This requires serializing and deserializing the object. A client
-	sends only command or message objects while the server sends
-	only event or message objects.
-	"""
 	def handle_client(self, user):
+		"""
+		Protocol dataclass objects are transmitted between server and client. 
+		This requires serializing and deserializing the object. A client
+		sends only command or message objects while the server sends
+		only event or message objects.
+		"""
 		# Assign user a unique nickname when they join the server
 		user.conn.sendall(serialize(Event(type="nick", 
 									  notif="You have been assigned a new nickname by default. Use /nick to change it.", 
@@ -295,6 +325,7 @@ class ChatServer:
 
 
 	def shutdown(self):
+		"""Graceful shutdown of the server."""
 		self.log("\nServer is shutting down...", level=0)
 		logging.info("Server shutting down...")
 
@@ -322,13 +353,14 @@ class ChatServer:
 
 
 def main():
-	setupLogServer()
-	logging.info("Server Logging initialized")
 	"""
 	The server takes in arguments for the port and debug-level.
 	Type in terminal python3 ChatServer.py -p <port#> -d <debug-level>
-	to pass arguments to the server. 
+	to pass arguments to the server. Logging on the server also begins.
 	"""
+	setupLogServer()
+	logging.info("Server Logging initialized")
+
 	parser = ArgumentParser(description='Create a Chat Server.')
 	parser.add_argument('-p', '--port', type=int, default=65432, help='Port Number: (default=65432)')
 	parser.add_argument('-d', '--debug', type=int, default=0, choices=[0, 1],
