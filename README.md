@@ -14,14 +14,15 @@ https://youtu.be/qDWwT4kRLZg?si=ljAdpxAW37Mp5JOo
 ## File/Folder Manifest
 
 project organization:
+
 notworking-irc/
-── Scripts/ #main src code
+- Scripts/ #main src code
     - pycache/ #python cache files
     - ChatProtocol.py #object-based protocol for commands, events, messages  
     - logger.py #logging setup for client and server
     - tcp_client.py #chat client 
     - tcp_server.py #chat server 
-── README.md #this file
+- README.md #this file
 
 
 ## Building and Running the Server/Clients
@@ -101,13 +102,13 @@ notworking-irc/
 ## Observations and Reflection
 Our development process was highly collaborative and flexible. We mainly communicated via Discord, using both voice calls and text chat to share tasks, ask questions, and provide updates. Each team member was very responsive, helpful, and cooperative, ensuring that progress moved smoothly. No tasks were permanently assigned; everyone helped wherever needed.
 
--Kelly: initial client-server connection setup and ANSI color starter
+- Kelly: initial client-server connection setup and ANSI color starter
 
--Jonathan: client interface and user interaction, testing
+- Jonathan: client interface and user interaction, testing
 
--Tina: server-client object protocol, channel/user classes, testing
+- Tina: server-client object protocol, channel/user classes, testing
 
--Mumo: logging, terminal enhancements, demo
+- Mumo: logging, terminal enhancements, demo
 
 It was easy to ask for help and receive guidance, and we were able to reassign tasks if needed based on comfort and expertise. Each member contributed to debugging, testing, and refining features, and we often updated each other on our progress. This strong communication and willingness to assist one another made the team highly dependable and allowed us to overcome challenges efficiently.
 
